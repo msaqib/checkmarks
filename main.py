@@ -1,6 +1,7 @@
 from playwright.sync_api import sync_playwright
+import argparse
 
-def scrape_course_portal():
+def scrape_course_portal(username, password):
     with sync_playwright() as p:
         # 1. Launch Browser (headed mode so you can see what's happening)
         browser = p.chromium.launch(headless=False)
@@ -10,8 +11,8 @@ def scrape_course_portal():
         page.goto("https://lms.lums.edu.pk/")
 
         # --- AUTHENTICATION STEP (If needed) ---
-        page.fill('input[name="eid"]', "saqibm")
-        page.fill('input[name="pw"]', "abcd123")
+        page.fill('input[name="eid"]', username)
+        page.fill('input[name="pw"]', password)
         page.click('input[type="submit"]')
         page.wait_for_load_state("networkidle")
 
@@ -88,4 +89,27 @@ def scrape_course_portal():
         browser.close()
 
 if __name__ == "__main__":
-    scrape_course_portal()
+    parser = argparse.ArgumentParser(
+        description="Scrape course portal to check assignment grades and missing marks",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py -u saqibm -p mypassword
+  python main.py --username saqibm --password mypassword
+        """
+    )
+    parser.add_argument(
+        '-u', '--username',
+        type=str,
+        required=True,
+        help='Username (eid) for LMS login'
+    )
+    parser.add_argument(
+        '-p', '--password',
+        type=str,
+        required=True,
+        help='Password for LMS login'
+    )
+    
+    args = parser.parse_args()
+    scrape_course_portal(args.username, args.password)
