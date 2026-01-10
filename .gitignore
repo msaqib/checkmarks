@@ -1,0 +1,47 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Virtual Environments ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Playwright/Browsers ---
+# Playwright usually installs browsers globally, but if you 
+# configure it to install locally, ignore that folder:
+.local-browsers/
+# Screenshots or trace files generated during debugging
+screenshots/
+traces/
+test-results/
+
+# --- Environment Variables / Secrets ---
+.env
+.flaskenv
+secrets.json
+
+# --- Editor/OS specific ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
