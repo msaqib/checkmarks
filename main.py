@@ -33,6 +33,10 @@ class CoursePortalGUI:
         
         # Loading state
         self.is_loading = False
+        
+        # Hover state tracking for listboxes
+        self.hovered_item = {}  # dict to track hovered item index for each listbox
+        
         style = ttk.Style()
         print(style.theme_names())
         style.theme_use('vista')
@@ -135,11 +139,53 @@ class CoursePortalGUI:
         self.status_label = ttk.Label(status_frame, text="Ready", anchor=tk.W, padding="5")
         self.status_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
         
+        # Set up hover effects for all listboxes
+        self.setup_listbox_hover(self.courses_listbox)
+        self.setup_listbox_hover(self.assignments_listbox)
+        self.setup_listbox_hover(self.students_listbox)
+        
         # Configure grid weights
         self.main_frame.columnconfigure(0, weight=1)
         self.main_frame.columnconfigure(1, weight=1)
         self.main_frame.columnconfigure(2, weight=1)
         self.main_frame.rowconfigure(1, weight=1)  # Row 1 is for courses/assignments/students
+        
+    def setup_listbox_hover(self, listbox):
+        """Set up hover effects for a listbox"""
+        # Get the default background color from the listbox
+        default_bg = listbox.cget("background")
+        hover_bg = "#e0e0e0"  # Light gray for hover
+        
+        # Initialize hover state for this listbox
+        listbox_id = id(listbox)
+        self.hovered_item[listbox_id] = None
+        
+        def on_motion(event):
+            """Handle mouse motion over the listbox"""
+            # Get the item index under the cursor
+            index = listbox.nearest(event.y)
+            
+            # Only process if we're actually over a valid item
+            if 0 <= index < listbox.size():
+                # Remove hover from previous item if different
+                if self.hovered_item[listbox_id] is not None and self.hovered_item[listbox_id] != index:
+                    listbox.itemconfig(self.hovered_item[listbox_id], bg=default_bg)
+                
+                # Apply hover to current item if not already hovered
+                if self.hovered_item[listbox_id] != index:
+                    listbox.itemconfig(index, bg=hover_bg)
+                    self.hovered_item[listbox_id] = index
+        
+        def on_leave(event):
+            """Handle mouse leaving the listbox"""
+            # Remove hover from any hovered item
+            if self.hovered_item[listbox_id] is not None:
+                listbox.itemconfig(self.hovered_item[listbox_id], bg=default_bg)
+                self.hovered_item[listbox_id] = None
+        
+        # Bind mouse motion and leave events
+        listbox.bind('<Motion>', on_motion)
+        listbox.bind('<Leave>', on_leave)
         
     def safe_after(self, delay, func, *args):
         """Safely schedule a callback on the main thread from any thread"""
