@@ -565,12 +565,12 @@ class CoursePortalGUI:
             assignment_div.wait_for(state="visible")
             assignment_div.click()
             page.wait_for_load_state("networkidle")
-                
-                # Fetch assignment elements
+                    
+                    # Fetch assignment elements
             row_elems = page.query_selector_all('td:has(> strong > a[name="asnActionLink"])')
             assignment_elements = []
             grades_elements = []
-                
+                    
             for td in row_elems:
                 anchors = td.query_selector_all('strong > a[name="asnActionLink"]')
                 grades = td.query_selector_all('xpath=.//*[normalize-space(text())="Grade"]')
@@ -711,7 +711,7 @@ class CoursePortalGUI:
             # Find students without marks
             table = page.query_selector("table#submissionList")
             rows = table.query_selector_all("tr") if table else []
-            
+        
             students_missing = []
             for row in rows:
                 td_elements = row.query_selector_all("td")
@@ -767,24 +767,15 @@ class CoursePortalGUI:
         
     def on_signout_clicked(self):
         """Handle sign out button click"""
-        # Hide main window first (immediate UI response)
-        if hasattr(self, 'main_frame'):
-            self.main_frame.grid_remove()
+        t0 = time.perf_counter()
         
-        # Show login window immediately (before cleanup)
-        self.login_frame.grid()
+        # Save old thread and queue references before resetting (for cleanup)
+        old_thread = self.browser_thread
+        old_queue = self.browser_queue
         
-        # Clear password field for security
-        self.password_entry.delete(0, tk.END)
-        self.login_error_label.config(text="")
-        
-        # Reset remember me checkbox state
-        self.remember_me_var.set(False)
-        
-        # Re-enable login controls
-        self.login_button.config(state="normal")
-        self.username_entry.config(state="normal")
-        self.password_entry.config(state="normal")
+        # Reset browser thread and queue immediately (so login can start fresh)
+        self.browser_thread = None
+        self.browser_queue = Queue()
         
         # Clear state
         self.browser_ready = False
@@ -802,26 +793,63 @@ class CoursePortalGUI:
         if hasattr(self, 'students_listbox'):
             self.students_listbox.delete(0, tk.END)
         
-        # Save old thread and queue references before resetting (for cleanup)
-        old_thread = self.browser_thread
-        old_queue = self.browser_queue
+        # Hide main window and show login window
+        if hasattr(self, 'main_frame'):
+            self.main_frame.grid_forget()
         
-        # Reset browser thread and queue immediately (so login can start fresh)
-        self.browser_thread = None
-        self.browser_queue = Queue()
+        # Show login window
+        self.login_frame.grid()
+        
+        # Clear password field for security
+        self.password_entry.delete(0, tk.END)
+        self.login_error_label.config(text="")
+        
+        # Reset remember me checkbox state
+        self.remember_me_var.set(False)
+        
+        # Re-enable login controls
+        self.login_button.config(state="normal")
+        self.username_entry.config(state="normal")
+        self.password_entry.config(state="normal")
+        
+        # Force update
+        self.root.update_idletasks()
+        self.root.update()
+        
+        # Workaround for Windows repaint issue: minimize and restore to force repaint
+        # This simulates what happens during alt-tab focus change
+        try:
+            # Minimize the window
+            self.root.state('iconic')
+            self.root.update_idletasks()
+            # Immediately restore it
+            self.root.state('normal')
+            self.root.update_idletasks()
+            self.root.update()
+        except Exception as e:
+            # If state change doesn't work, continue anyway
+            print(f"[DEBUG] Minimize/restore workaround failed: {e}")
+        t1 = time.perf_counter()
+        print(f"[PROFILE] on_signout_clicked - Schedule frame switch: {(t1-t0)*1000:.2f} ms")
         
         # Clean up browser resources in background thread (non-blocking)
         def cleanup_async():
+            t_cleanup_start = time.perf_counter()
+            
             # Signal old thread to shutdown using old queue
             if old_queue:
                 try:
                     old_queue.put(None)  # Shutdown signal
                 except:
                     pass
+            t_cleanup_1 = time.perf_counter()
+            print(f"[PROFILE] cleanup_async - Signal shutdown: {(t_cleanup_1-t_cleanup_start)*1000:.2f} ms")
             
             # Wait for old thread to finish (with timeout)
             if old_thread and old_thread.is_alive():
                 old_thread.join(timeout=2.0)
+            t_cleanup_2 = time.perf_counter()
+            print(f"[PROFILE] cleanup_async - Wait for thread: {(t_cleanup_2-t_cleanup_1)*1000:.2f} ms")
             
             # Fallback cleanup of browser resources
             if hasattr(self, 'browser') and self.browser:
@@ -829,19 +857,30 @@ class CoursePortalGUI:
                     self.browser.close()
                 except:
                     pass
+            t_cleanup_3 = time.perf_counter()
+            print(f"[PROFILE] cleanup_async - Browser close: {(t_cleanup_3-t_cleanup_2)*1000:.2f} ms")
+            
             if hasattr(self, 'playwright') and self.playwright:
                 try:
                     self.playwright.stop()
                 except:
                     pass
+            t_cleanup_4 = time.perf_counter()
+            print(f"[PROFILE] cleanup_async - Playwright stop: {(t_cleanup_4-t_cleanup_3)*1000:.2f} ms")
             
             # Final cleanup
             self.browser = None
             self.page = None
             self.playwright = None
+            t_cleanup_end = time.perf_counter()
+            print(f"[PROFILE] cleanup_async - Final cleanup: {(t_cleanup_end-t_cleanup_4)*1000:.2f} ms")
+            print(f"[PROFILE] cleanup_async - TOTAL: {(t_cleanup_end-t_cleanup_start)*1000:.2f} ms")
         
         cleanup_thread = threading.Thread(target=cleanup_async, daemon=True)
         cleanup_thread.start()
+        t2 = time.perf_counter()
+        print(f"[PROFILE] on_signout_clicked - Start cleanup thread: {(t2-t1)*1000:.2f} ms")
+        print(f"[PROFILE] on_signout_clicked - TOTAL (main function): {(t2-t0)*1000:.2f} ms")
     
     def cleanup_browser(self):
         """Clean up browser resources"""
