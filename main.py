@@ -57,54 +57,49 @@ class CoursePortalGUI:
         self.login_button = ttk.Button(login_frame, text="Login", command=self.on_login_clicked)
         self.login_button.grid(row=0, column=2, rowspan=2, padx=10, pady=5, sticky=tk.W)
         
-        # Loading label
-        self.loading_label = ttk.Label(login_frame, text="", foreground="blue")
-        self.loading_label.grid(row=2, column=0, columnspan=3, pady=5)
-        
         # Three column layout for courses, assignments, and students
         courses_frame = ttk.LabelFrame(main_frame, text="Courses", padding="10")
         courses_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
         courses_frame.columnconfigure(0, weight=1)
-        courses_frame.rowconfigure(1, weight=1)
-        
-        self.courses_loading_label = ttk.Label(courses_frame, text="", foreground="blue")
-        self.courses_loading_label.grid(row=0, column=0, pady=5)
+        courses_frame.rowconfigure(0, weight=1)
         
         courses_scrollbar = ttk.Scrollbar(courses_frame, orient=tk.VERTICAL)
         self.courses_listbox = tk.Listbox(courses_frame, yscrollcommand=courses_scrollbar.set, height=15)
         courses_scrollbar.config(command=self.courses_listbox.yview)
-        self.courses_listbox.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        courses_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        self.courses_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        courses_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.courses_listbox.bind('<<ListboxSelect>>', self.on_course_selected)
         
         assignments_frame = ttk.LabelFrame(main_frame, text="Assignments", padding="10")
         assignments_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
         assignments_frame.columnconfigure(0, weight=1)
-        assignments_frame.rowconfigure(1, weight=1)
-        
-        self.assignments_loading_label = ttk.Label(assignments_frame, text="", foreground="blue")
-        self.assignments_loading_label.grid(row=0, column=0, pady=5)
+        assignments_frame.rowconfigure(0, weight=1)
         
         assignments_scrollbar = ttk.Scrollbar(assignments_frame, orient=tk.VERTICAL)
         self.assignments_listbox = tk.Listbox(assignments_frame, yscrollcommand=assignments_scrollbar.set, height=15)
         assignments_scrollbar.config(command=self.assignments_listbox.yview)
-        self.assignments_listbox.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        assignments_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        self.assignments_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        assignments_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.assignments_listbox.bind('<<ListboxSelect>>', self.on_assignment_selected)
         
         students_frame = ttk.LabelFrame(main_frame, text="Students Missing Grades", padding="10")
         students_frame.grid(row=1, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         students_frame.columnconfigure(0, weight=1)
-        students_frame.rowconfigure(1, weight=1)
-        
-        self.students_loading_label = ttk.Label(students_frame, text="", foreground="blue")
-        self.students_loading_label.grid(row=0, column=0, pady=5)
+        students_frame.rowconfigure(0, weight=1)
         
         students_scrollbar = ttk.Scrollbar(students_frame, orient=tk.VERTICAL)
         self.students_listbox = tk.Listbox(students_frame, yscrollcommand=students_scrollbar.set, height=15)
         students_scrollbar.config(command=self.students_listbox.yview)
-        self.students_listbox.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        students_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        self.students_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        students_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # Status bar at the bottom
+        status_frame = ttk.Frame(main_frame, relief=tk.SUNKEN, borderwidth=1)
+        status_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_frame.columnconfigure(0, weight=1)
+        
+        self.status_label = ttk.Label(status_frame, text="Ready", anchor=tk.W, padding="5")
+        self.status_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
         
         # Configure grid weights
         main_frame.columnconfigure(0, weight=1)
@@ -123,11 +118,12 @@ class CoursePortalGUI:
             traceback.print_exc()
             sys.stderr.flush()
         
-    def show_loading(self, label, message="Loading..."):
-        """Show loading animation on a label"""
+    def show_loading(self, message="Loading..."):
+        """Show loading animation on status bar"""
         try:
-            label.config(text=message)
-            self.safe_after(0, self._animate_loading, label, message, 0)
+            self.status_label.config(text=message, foreground="blue")
+            self.is_loading = True
+            self.safe_after(0, self._animate_loading, message, 0)
         except (tk.TclError, RuntimeError) as e:
             print(f"ERROR in show_loading: {type(e).__name__}: {e}")
             traceback.print_exc()
@@ -137,20 +133,20 @@ class CoursePortalGUI:
             traceback.print_exc()
             sys.stderr.flush()
         
-    def _animate_loading(self, label, base_message, dot_count):
+    def _animate_loading(self, base_message, dot_count):
         """Animate loading dots"""
         try:
             if not self.is_loading:
                 try:
-                    label.config(text="")
+                    self.status_label.config(text="")
                 except (tk.TclError, RuntimeError) as e:
                     print(f"ERROR in _animate_loading (label.config): {type(e).__name__}: {e}")
                     traceback.print_exc()
                     sys.stderr.flush()
                 return
             dots = "." * ((dot_count % 3) + 1)
-            label.config(text=f"{base_message}{dots}")
-            self.safe_after(500, self._animate_loading, label, base_message, dot_count + 1)
+            self.status_label.config(text=f"{base_message}{dots}", foreground="blue")
+            self.safe_after(500, self._animate_loading, base_message, dot_count + 1)
         except (tk.TclError, RuntimeError) as e:
             # Handle cases where root is destroyed or thread issues occur
             print(f"ERROR in _animate_loading: {type(e).__name__}: {e}")
@@ -161,12 +157,20 @@ class CoursePortalGUI:
             traceback.print_exc()
             sys.stderr.flush()
         
-    def hide_loading(self, label):
+    def hide_loading(self):
         """Hide loading animation"""
         try:
-            label.config(text="")
+            self.status_label.config(text="")
+            self.is_loading = False
         except (tk.TclError, RuntimeError):
             # Handle cases where root is destroyed
+            pass
+    
+    def set_status(self, message, color="black"):
+        """Set status bar message"""
+        try:
+            self.status_label.config(text=message, foreground=color)
+        except (tk.TclError, RuntimeError):
             pass
         
     def on_login_clicked(self):
@@ -175,14 +179,14 @@ class CoursePortalGUI:
         password = self.password_entry.get().strip()
         
         if not username or not password:
-            self.loading_label.config(text="Please enter both username and password", foreground="red")
+            self.set_status("Please enter both username and password", "red")
             return
             
         self.login_button.config(state="disabled")
         self.username_entry.config(state="disabled")
         self.password_entry.config(state="disabled")
         self.is_loading = True
-        self.show_loading(self.loading_label, "Logging in")
+        self.show_loading("Logging in")
         
         # Run login in separate thread
         thread = threading.Thread(target=self.login_and_fetch_courses, args=(username, password), daemon=True)
@@ -257,12 +261,12 @@ class CoursePortalGUI:
         """Perform login operation - runs in browser thread"""
         try:
             print("[DEBUG] _do_login: Opening browser...")
-            self.safe_after(0, self.update_loading_message, self.loading_label, "Opening browser...")
+            self.safe_after(0, self.update_loading_message, "Opening browser...")
             
             page.goto("https://lms.lums.edu.pk/")
 
             print("[DEBUG] _do_login: Entering credentials...")
-            self.safe_after(0, self.update_loading_message, self.loading_label, "Entering credentials...")
+            self.safe_after(0, self.update_loading_message, "Entering credentials...")
             
             page.fill('input[name="eid"]', username)
             page.fill('input[name="pw"]', password)
@@ -270,7 +274,7 @@ class CoursePortalGUI:
             page.wait_for_load_state("networkidle")
 
             print("[DEBUG] _do_login: Login successful! Fetching courses...")
-            self.safe_after(0, self.update_loading_message, self.loading_label, "Login successful! Fetching courses...")
+            self.safe_after(0, self.update_loading_message, "Login successful! Fetching courses...")
             time.sleep(0.5)
             
             # Fetch courses
@@ -313,10 +317,10 @@ class CoursePortalGUI:
             'password': password
         })
             
-    def update_loading_message(self, label, message):
-        """Update loading message from worker thread"""
+    def update_loading_message(self, message):
+        """Update status message from worker thread"""
         try:
-            label.config(text=message)
+            self.status_label.config(text=message, foreground="blue")
         except (tk.TclError, RuntimeError) as e:
             # Handle cases where root is destroyed
             print(f"ERROR in update_loading_message: {type(e).__name__}: {e}")
@@ -330,8 +334,8 @@ class CoursePortalGUI:
     def on_login_success(self, courses):
         """Handle successful login - update UI"""
         self.is_loading = False
-        self.hide_loading(self.loading_label)
-        self.loading_label.config(text="Login successful!", foreground="green")
+        self.hide_loading()
+        self.set_status("Login successful!", "green")
         
         self.login_button.config(state="normal")
         self.username_entry.config(state="normal")
@@ -345,8 +349,8 @@ class CoursePortalGUI:
     def on_login_error(self, error_message):
         """Handle login error"""
         self.is_loading = False
-        self.hide_loading(self.loading_label)
-        self.loading_label.config(text=f"Error: {error_message}", foreground="red")
+        self.hide_loading()
+        self.set_status(f"Error: {error_message}", "red")
         
         self.login_button.config(state="normal")
         self.username_entry.config(state="normal")
@@ -391,13 +395,11 @@ class CoursePortalGUI:
             self.current_assignment_index = None
             self.assignments = []
             self.students_missing = []
-            self.hide_loading(self.students_loading_label)
-            self.students_loading_label.config(text="")
             
             # Show loading for assignments
             self.is_loading = True
             print("[DEBUG] Calling show_loading for assignments")
-            self.show_loading(self.assignments_loading_label, "Fetching assignments...")
+            self.show_loading("Fetching assignments...")
             
             # Queue fetch_assignments operation to browser thread
             print("[DEBUG] Queueing fetch_assignments operation")
@@ -477,7 +479,8 @@ class CoursePortalGUI:
     def on_assignments_fetched(self, assignments):
         """Handle assignments fetched - update UI"""
         self.is_loading = False
-        self.hide_loading(self.assignments_loading_label)
+        self.hide_loading()
+        self.set_status(f"Found {len(assignments)} assignment(s)", "black")
         
         # Populate assignments list
         self.assignments_listbox.delete(0, tk.END)
@@ -487,8 +490,8 @@ class CoursePortalGUI:
     def on_assignments_error(self, error_message):
         """Handle error fetching assignments"""
         self.is_loading = False
-        self.hide_loading(self.assignments_loading_label)
-        self.assignments_loading_label.config(text=f"Error: {error_message}", foreground="red")
+        self.hide_loading()
+        self.set_status(f"Error: {error_message}", "red")
         
     def on_assignment_selected(self, event):
         """Handle assignment selection"""
@@ -514,7 +517,7 @@ class CoursePortalGUI:
         
         # Show loading for students
         self.is_loading = True
-        self.show_loading(self.students_loading_label, "Processing assignment...")
+        self.show_loading("Processing assignment...")
         
         # Queue process_assignment operation to browser thread
         self.browser_queue.put({
@@ -618,7 +621,7 @@ class CoursePortalGUI:
     def on_students_processed(self, students_missing):
         """Handle students processed - update UI"""
         self.is_loading = False
-        self.hide_loading(self.students_loading_label)
+        self.hide_loading()
         
         # Populate students list
         self.students_listbox.delete(0, tk.END)
@@ -626,16 +629,16 @@ class CoursePortalGUI:
             for student in students_missing:
                 self.students_listbox.insert(tk.END, f"{student['name']} - {student['status']}")
             count_text = f"Found {len(students_missing)} student(s) with missing grades"
-            self.students_loading_label.config(text=count_text, foreground="orange")
+            self.set_status(count_text, "orange")
         else:
             self.students_listbox.insert(tk.END, "All students have marks entered!")
-            self.students_loading_label.config(text="All students have marks!", foreground="green")
+            self.set_status("All students have marks!", "green")
             
     def on_students_error(self, error_message):
         """Handle error processing students"""
         self.is_loading = False
-        self.hide_loading(self.students_loading_label)
-        self.students_loading_label.config(text=f"Error: {error_message}", foreground="red")
+        self.hide_loading()
+        self.set_status(f"Error: {error_message}", "red")
         
     def cleanup(self):
         """Clean up browser resources"""
