@@ -6,6 +6,7 @@ import time
 import traceback
 import sys
 from queue import Queue, Empty
+import keyring
 
 class CoursePortalGUI:
     def __init__(self, root):
@@ -55,12 +56,20 @@ class CoursePortalGUI:
         self.password_entry = ttk.Entry(login_container, width=30, show="*", font=("", 10))
         self.password_entry.grid(row=1, column=1, padx=10, pady=10)
         
+        # Remember me checkbox
+        self.remember_me_var = tk.BooleanVar()
+        remember_me_checkbox = ttk.Checkbutton(login_container, text="Remember me", variable=self.remember_me_var)
+        remember_me_checkbox.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky=tk.W)
+        
         self.login_button = ttk.Button(login_container, text="Login", command=self.on_login_clicked, width=15)
-        self.login_button.grid(row=2, column=0, columnspan=2, padx=10, pady=20)
+        self.login_button.grid(row=3, column=0, columnspan=2, padx=10, pady=20)
         
         # Error message label
         self.login_error_label = ttk.Label(login_container, text="", foreground="red", font=("", 9))
-        self.login_error_label.grid(row=3, column=0, columnspan=2, padx=10, pady=5)
+        self.login_error_label.grid(row=4, column=0, columnspan=2, padx=10, pady=5)
+        
+        # Load saved credentials
+        self.load_saved_credentials()
         
         # Bind Enter key to login
         self.username_entry.bind('<Return>', lambda e: self.on_login_clicked())
@@ -76,7 +85,7 @@ class CoursePortalGUI:
         
         # Three column layout for courses, assignments, and students
         courses_frame = ttk.LabelFrame(self.main_frame, text="Courses", padding="10")
-        courses_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        courses_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
         courses_frame.columnconfigure(0, weight=1)
         courses_frame.rowconfigure(0, weight=1)
         
@@ -88,7 +97,7 @@ class CoursePortalGUI:
         self.courses_listbox.bind('<<ListboxSelect>>', self.on_course_selected)
         
         assignments_frame = ttk.LabelFrame(self.main_frame, text="Assignments", padding="10")
-        assignments_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
+        assignments_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
         assignments_frame.columnconfigure(0, weight=1)
         assignments_frame.rowconfigure(0, weight=1)
         
@@ -100,7 +109,7 @@ class CoursePortalGUI:
         self.assignments_listbox.bind('<<ListboxSelect>>', self.on_assignment_selected)
         
         students_frame = ttk.LabelFrame(self.main_frame, text="Students Missing Grades", padding="10")
-        students_frame.grid(row=0, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
+        students_frame.grid(row=1, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         students_frame.columnconfigure(0, weight=1)
         students_frame.rowconfigure(0, weight=1)
         
@@ -110,9 +119,15 @@ class CoursePortalGUI:
         self.students_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         students_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
+        # Sign Out button at the top right
+        signout_frame = ttk.Frame(self.main_frame)
+        signout_frame.grid(row=0, column=0, columnspan=3, sticky=(tk.E, tk.N), padx=5, pady=5)
+        self.signout_button = ttk.Button(signout_frame, text="Sign Out", command=self.on_signout_clicked)
+        self.signout_button.pack(side=tk.RIGHT)
+        
         # Status bar at the bottom
         status_frame = ttk.Frame(self.main_frame, relief=tk.SUNKEN, borderwidth=1)
-        status_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
         status_frame.columnconfigure(0, weight=1)
         
         self.status_label = ttk.Label(status_frame, text="Ready", anchor=tk.W, padding="5")
@@ -122,7 +137,7 @@ class CoursePortalGUI:
         self.main_frame.columnconfigure(0, weight=1)
         self.main_frame.columnconfigure(1, weight=1)
         self.main_frame.columnconfigure(2, weight=1)
-        self.main_frame.rowconfigure(0, weight=1)
+        self.main_frame.rowconfigure(1, weight=1)  # Row 1 is for courses/assignments/students
         
     def safe_after(self, delay, func, *args):
         """Safely schedule a callback on the main thread from any thread"""
@@ -190,6 +205,46 @@ class CoursePortalGUI:
         except (tk.TclError, RuntimeError):
             pass
         
+    def save_credentials(self, username, password):
+        """Save credentials to system keyring"""
+        try:
+            service_name = "CoursePortalLMS"
+            keyring.set_password(service_name, username, password)
+            # Store that we have saved credentials
+            keyring.set_password(service_name, "_remember_me", "true")
+            keyring.set_password(service_name, "_username", username)
+        except Exception as e:
+            print(f"Error saving credentials: {e}")
+    
+    def load_saved_credentials(self):
+        """Load saved credentials from system keyring and pre-fill form"""
+        try:
+            service_name = "CoursePortalLMS"
+            # Check if we have saved credentials
+            remember_me = keyring.get_password(service_name, "_remember_me")
+            if remember_me == "true":
+                username = keyring.get_password(service_name, "_username")
+                if username:
+                    password = keyring.get_password(service_name, username)
+                    if password:
+                        self.username_entry.insert(0, username)
+                        self.password_entry.insert(0, password)
+                        self.remember_me_var.set(True)
+        except Exception as e:
+            print(f"Error loading credentials: {e}")
+    
+    def clear_saved_credentials(self):
+        """Clear saved credentials from system keyring"""
+        try:
+            service_name = "CoursePortalLMS"
+            username = keyring.get_password(service_name, "_username")
+            if username:
+                keyring.delete_password(service_name, username)
+            keyring.delete_password(service_name, "_remember_me")
+            keyring.delete_password(service_name, "_username")
+        except Exception as e:
+            print(f"Error clearing credentials: {e}")
+    
     def on_login_clicked(self):
         """Handle login button click"""
         username = self.username_entry.get().strip()
@@ -206,6 +261,10 @@ class CoursePortalGUI:
         self.username_entry.config(state="disabled")
         self.password_entry.config(state="disabled")
         self.login_error_label.config(text="Logging in...", foreground="blue")
+        
+        # Store username and remember_me state for later use
+        self.current_username = username
+        self.current_remember_me = self.remember_me_var.get()
         
         # Run login in separate thread
         thread = threading.Thread(target=self.login_and_fetch_courses, args=(username, password), daemon=True)
@@ -380,6 +439,15 @@ class CoursePortalGUI:
         
     def on_login_success(self, courses):
         """Handle successful login - switch to main window"""
+        # Save credentials if "Remember me" is checked
+        if hasattr(self, 'current_remember_me') and self.current_remember_me:
+            if hasattr(self, 'current_username'):
+                password = self.password_entry.get().strip()
+                self.save_credentials(self.current_username, password)
+        else:
+            # Clear saved credentials if "Remember me" is unchecked
+            self.clear_saved_credentials()
+        
         # Hide login window
         self.login_frame.grid_remove()
         
@@ -423,6 +491,8 @@ class CoursePortalGUI:
         self.login_button.config(state="normal")
         self.username_entry.config(state="normal")
         self.password_entry.config(state="normal")
+        # Clear password field on error for security
+        self.password_entry.delete(0, tk.END)
         
     def on_course_selected(self, event):
         """Handle course selection"""
@@ -695,27 +765,112 @@ class CoursePortalGUI:
         self.hide_loading()
         self.set_status(f"Error: {error_message}", "red")
         
-    def cleanup(self):
+    def on_signout_clicked(self):
+        """Handle sign out button click"""
+        # Hide main window first (immediate UI response)
+        if hasattr(self, 'main_frame'):
+            self.main_frame.grid_remove()
+        
+        # Show login window immediately (before cleanup)
+        self.login_frame.grid()
+        
+        # Clear password field for security
+        self.password_entry.delete(0, tk.END)
+        self.login_error_label.config(text="")
+        
+        # Reset remember me checkbox state
+        self.remember_me_var.set(False)
+        
+        # Re-enable login controls
+        self.login_button.config(state="normal")
+        self.username_entry.config(state="normal")
+        self.password_entry.config(state="normal")
+        
+        # Clear state
+        self.browser_ready = False
+        self.courses = []
+        self.assignments = []
+        self.students_missing = []
+        self.current_course_index = None
+        self.current_assignment_index = None
+        
+        # Clear listboxes
+        if hasattr(self, 'courses_listbox'):
+            self.courses_listbox.delete(0, tk.END)
+        if hasattr(self, 'assignments_listbox'):
+            self.assignments_listbox.delete(0, tk.END)
+        if hasattr(self, 'students_listbox'):
+            self.students_listbox.delete(0, tk.END)
+        
+        # Save old thread and queue references before resetting (for cleanup)
+        old_thread = self.browser_thread
+        old_queue = self.browser_queue
+        
+        # Reset browser thread and queue immediately (so login can start fresh)
+        self.browser_thread = None
+        self.browser_queue = Queue()
+        
+        # Clean up browser resources in background thread (non-blocking)
+        def cleanup_async():
+            # Signal old thread to shutdown using old queue
+            if old_queue:
+                try:
+                    old_queue.put(None)  # Shutdown signal
+                except:
+                    pass
+            
+            # Wait for old thread to finish (with timeout)
+            if old_thread and old_thread.is_alive():
+                old_thread.join(timeout=2.0)
+            
+            # Fallback cleanup of browser resources
+            if hasattr(self, 'browser') and self.browser:
+                try:
+                    self.browser.close()
+                except:
+                    pass
+            if hasattr(self, 'playwright') and self.playwright:
+                try:
+                    self.playwright.stop()
+                except:
+                    pass
+            
+            # Final cleanup
+            self.browser = None
+            self.page = None
+            self.playwright = None
+        
+        cleanup_thread = threading.Thread(target=cleanup_async, daemon=True)
+        cleanup_thread.start()
+    
+    def cleanup_browser(self):
         """Clean up browser resources"""
         # Signal browser thread to shutdown
-        if self.browser_queue:
-            self.browser_queue.put(None)  # Shutdown signal
+        if hasattr(self, 'browser_queue') and self.browser_queue:
+            try:
+                self.browser_queue.put(None)  # Shutdown signal
+            except:
+                pass
         
         # Wait for browser thread to finish (with timeout)
-        if self.browser_thread and self.browser_thread.is_alive():
+        if hasattr(self, 'browser_thread') and self.browser_thread and self.browser_thread.is_alive():
             self.browser_thread.join(timeout=2.0)
         
         # Fallback cleanup
-        if self.browser:
+        if hasattr(self, 'browser') and self.browser:
             try:
                 self.browser.close()
             except:
                 pass
-        if self.playwright:
+        if hasattr(self, 'playwright') and self.playwright:
             try:
                 self.playwright.stop()
             except:
                 pass
+    
+    def cleanup(self):
+        """Clean up browser resources - called on window close"""
+        self.cleanup_browser()
 
 def exception_handler(exc_type, exc_value, exc_traceback):
     """Global exception handler to catch all unhandled exceptions"""
