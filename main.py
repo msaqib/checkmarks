@@ -33,33 +33,50 @@ class CoursePortalGUI:
         # Loading state
         self.is_loading = False
         
-        self.create_widgets()
+        self.create_login_widgets()
         
-    def create_widgets(self):
-        # Main container with padding
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    def create_login_widgets(self):
+        """Create login window - shown initially"""
+        # Login container
+        self.login_frame = ttk.Frame(self.root, padding="20")
+        self.login_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         
-        # Login section
-        login_frame = ttk.LabelFrame(main_frame, text="Login", padding="10")
-        login_frame.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        # Center the login form
+        login_container = ttk.Frame(self.login_frame)
+        login_container.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        ttk.Label(login_frame, text="Username:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-        self.username_entry = ttk.Entry(login_frame, width=30)
-        self.username_entry.grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(login_container, text="Username:", font=("", 10)).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+        self.username_entry = ttk.Entry(login_container, width=30, font=("", 10))
+        self.username_entry.grid(row=0, column=1, padx=10, pady=10)
         
-        ttk.Label(login_frame, text="Password:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        self.password_entry = ttk.Entry(login_frame, width=30, show="*")
-        self.password_entry.grid(row=1, column=1, padx=5, pady=5)
+        ttk.Label(login_container, text="Password:", font=("", 10)).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
+        self.password_entry = ttk.Entry(login_container, width=30, show="*", font=("", 10))
+        self.password_entry.grid(row=1, column=1, padx=10, pady=10)
         
-        self.login_button = ttk.Button(login_frame, text="Login", command=self.on_login_clicked)
-        self.login_button.grid(row=0, column=2, rowspan=2, padx=10, pady=5, sticky=tk.W)
+        self.login_button = ttk.Button(login_container, text="Login", command=self.on_login_clicked, width=15)
+        self.login_button.grid(row=2, column=0, columnspan=2, padx=10, pady=20)
+        
+        # Error message label
+        self.login_error_label = ttk.Label(login_container, text="", foreground="red", font=("", 9))
+        self.login_error_label.grid(row=3, column=0, columnspan=2, padx=10, pady=5)
+        
+        # Bind Enter key to login
+        self.username_entry.bind('<Return>', lambda e: self.on_login_clicked())
+        self.password_entry.bind('<Return>', lambda e: self.on_login_clicked())
+        
+    def create_main_widgets(self):
+        """Create main application window - shown after successful login"""
+        # Main container with padding
+        self.main_frame = ttk.Frame(self.root, padding="10")
+        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
         
         # Three column layout for courses, assignments, and students
-        courses_frame = ttk.LabelFrame(main_frame, text="Courses", padding="10")
-        courses_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        courses_frame = ttk.LabelFrame(self.main_frame, text="Courses", padding="10")
+        courses_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
         courses_frame.columnconfigure(0, weight=1)
         courses_frame.rowconfigure(0, weight=1)
         
@@ -70,8 +87,8 @@ class CoursePortalGUI:
         courses_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.courses_listbox.bind('<<ListboxSelect>>', self.on_course_selected)
         
-        assignments_frame = ttk.LabelFrame(main_frame, text="Assignments", padding="10")
-        assignments_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
+        assignments_frame = ttk.LabelFrame(self.main_frame, text="Assignments", padding="10")
+        assignments_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
         assignments_frame.columnconfigure(0, weight=1)
         assignments_frame.rowconfigure(0, weight=1)
         
@@ -82,8 +99,8 @@ class CoursePortalGUI:
         assignments_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.assignments_listbox.bind('<<ListboxSelect>>', self.on_assignment_selected)
         
-        students_frame = ttk.LabelFrame(main_frame, text="Students Missing Grades", padding="10")
-        students_frame.grid(row=1, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
+        students_frame = ttk.LabelFrame(self.main_frame, text="Students Missing Grades", padding="10")
+        students_frame.grid(row=0, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         students_frame.columnconfigure(0, weight=1)
         students_frame.rowconfigure(0, weight=1)
         
@@ -94,18 +111,18 @@ class CoursePortalGUI:
         students_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
         # Status bar at the bottom
-        status_frame = ttk.Frame(main_frame, relief=tk.SUNKEN, borderwidth=1)
-        status_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_frame = ttk.Frame(self.main_frame, relief=tk.SUNKEN, borderwidth=1)
+        status_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
         status_frame.columnconfigure(0, weight=1)
         
         self.status_label = ttk.Label(status_frame, text="Ready", anchor=tk.W, padding="5")
         self.status_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
         
         # Configure grid weights
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
-        main_frame.columnconfigure(2, weight=1)
-        main_frame.rowconfigure(1, weight=1)
+        self.main_frame.columnconfigure(0, weight=1)
+        self.main_frame.columnconfigure(1, weight=1)
+        self.main_frame.columnconfigure(2, weight=1)
+        self.main_frame.rowconfigure(0, weight=1)
         
     def safe_after(self, delay, func, *args):
         """Safely schedule a callback on the main thread from any thread"""
@@ -178,15 +195,17 @@ class CoursePortalGUI:
         username = self.username_entry.get().strip()
         password = self.password_entry.get().strip()
         
+        # Clear previous error
+        self.login_error_label.config(text="")
+        
         if not username or not password:
-            self.set_status("Please enter both username and password", "red")
+            self.login_error_label.config(text="Please enter both username and password")
             return
             
         self.login_button.config(state="disabled")
         self.username_entry.config(state="disabled")
         self.password_entry.config(state="disabled")
-        self.is_loading = True
-        self.show_loading("Logging in")
+        self.login_error_label.config(text="Logging in...", foreground="blue")
         
         # Run login in separate thread
         thread = threading.Thread(target=self.login_and_fetch_courses, args=(username, password), daemon=True)
@@ -261,20 +280,29 @@ class CoursePortalGUI:
         """Perform login operation - runs in browser thread"""
         try:
             print("[DEBUG] _do_login: Opening browser...")
-            self.safe_after(0, self.update_loading_message, "Opening browser...")
+            self.safe_after(0, self.update_login_status, "Connecting to server...")
             
-            page.goto("https://lms.lums.edu.pk/")
+            page.goto("https://lms.lums.edu.pk/", timeout=30000)
 
             print("[DEBUG] _do_login: Entering credentials...")
-            self.safe_after(0, self.update_loading_message, "Entering credentials...")
+            self.safe_after(0, self.update_login_status, "Entering credentials...")
             
             page.fill('input[name="eid"]', username)
             page.fill('input[name="pw"]', password)
             page.click('input[type="submit"]')
             page.wait_for_load_state("networkidle")
 
+            # Check if login was successful by verifying login form fields are gone
+            # If login failed, we're still on the login page and the fields will still exist
+            eid_input = page.query_selector('input[name="eid"]')
+            pw_input = page.query_selector('input[name="pw"]')
+            
+            if eid_input is not None or pw_input is not None:
+                # Login fields still exist - login failed
+                raise Exception("Login failed: Invalid credentials")
+
             print("[DEBUG] _do_login: Login successful! Fetching courses...")
-            self.safe_after(0, self.update_loading_message, "Login successful! Fetching courses...")
+            self.safe_after(0, self.update_login_status, "Fetching courses...")
             time.sleep(0.5)
             
             # Fetch courses
@@ -299,7 +327,12 @@ class CoursePortalGUI:
             print(f"ERROR in _do_login: {type(e).__name__}: {e}")
             traceback.print_exc()
             sys.stderr.flush()
-            self.safe_after(0, self.on_login_error, str(e))
+            # Check if it's a network/timeout error
+            error_msg = str(e).lower()
+            if "timeout" in error_msg or "network" in error_msg or "navigation" in error_msg or "net::" in error_msg or "err_name_not_resolved" in error_msg:
+                self.safe_after(0, self.on_login_error, "connection")
+            else:
+                self.safe_after(0, self.on_login_error, "credentials")
     
     def login_and_fetch_courses(self, username, password):
         """Queue login operation to browser thread"""
@@ -318,11 +351,11 @@ class CoursePortalGUI:
         })
             
     def update_loading_message(self, message):
-        """Update status message from worker thread"""
+        """Update status message from worker thread (main window)"""
         try:
-            self.status_label.config(text=message, foreground="blue")
+            if hasattr(self, 'status_label'):
+                self.status_label.config(text=message, foreground="blue")
         except (tk.TclError, RuntimeError) as e:
-            # Handle cases where root is destroyed
             print(f"ERROR in update_loading_message: {type(e).__name__}: {e}")
             traceback.print_exc()
             sys.stderr.flush()
@@ -330,32 +363,41 @@ class CoursePortalGUI:
             print(f"UNEXPECTED ERROR in update_loading_message: {type(e).__name__}: {e}")
             traceback.print_exc()
             sys.stderr.flush()
+    
+    def update_login_status(self, message):
+        """Update login status message (login window)"""
+        try:
+            if hasattr(self, 'login_error_label'):
+                self.login_error_label.config(text=message, foreground="blue")
+        except (tk.TclError, RuntimeError) as e:
+            print(f"ERROR in update_login_status: {type(e).__name__}: {e}")
+            traceback.print_exc()
+            sys.stderr.flush()
+        except Exception as e:
+            print(f"UNEXPECTED ERROR in update_login_status: {type(e).__name__}: {e}")
+            traceback.print_exc()
+            sys.stderr.flush()
         
     def on_login_success(self, courses):
-        """Handle successful login - update UI"""
-        self.is_loading = False
-        self.hide_loading()
-        self.set_status("Login successful!", "green")
+        """Handle successful login - switch to main window"""
+        # Hide login window
+        self.login_frame.grid_remove()
         
-        self.login_button.config(state="normal")
-        self.username_entry.config(state="normal")
-        self.password_entry.config(state="normal")
+        # Create and show main window
+        if not hasattr(self, 'main_frame'):
+            self.create_main_widgets()
+        else:
+            self.main_frame.grid()
         
         # Populate courses list
         self.courses_listbox.delete(0, tk.END)
         for course in courses:
             self.courses_listbox.insert(tk.END, course["name"])
+        
+        self.set_status("Ready", "black")
             
-    def on_login_error(self, error_message):
-        """Handle login error"""
-        self.is_loading = False
-        self.hide_loading()
-        self.set_status(f"Error: {error_message}", "red")
-        
-        self.login_button.config(state="normal")
-        self.username_entry.config(state="normal")
-        self.password_entry.config(state="normal")
-        
+    def on_login_error(self, error_type):
+        """Handle login error - show error message in login window"""
         # Clean up browser if it exists
         if self.browser:
             try:
@@ -368,6 +410,19 @@ class CoursePortalGUI:
             except:
                 pass
         self.browser_ready = False
+        
+        # Show appropriate error message
+        if error_type == "connection":
+            error_msg = "You may not be connected to the Internet"
+        else:  # credentials
+            error_msg = "Username or password is incorrect"
+        
+        self.login_error_label.config(text=error_msg, foreground="red")
+        
+        # Re-enable login controls
+        self.login_button.config(state="normal")
+        self.username_entry.config(state="normal")
+        self.password_entry.config(state="normal")
         
     def on_course_selected(self, event):
         """Handle course selection"""
