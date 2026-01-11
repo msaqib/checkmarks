@@ -33,7 +33,9 @@ class CoursePortalGUI:
         
         # Loading state
         self.is_loading = False
-        
+        style = ttk.Style()
+        print(style.theme_names())
+        style.theme_use('vista')
         self.create_login_widgets()
         
     def create_login_widgets(self):
