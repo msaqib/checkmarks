@@ -4,6 +4,7 @@ from tkinter import ttk
 import threading
 import traceback
 import sys
+import os
 from models.app_state import AppState
 from browser.browser_manager import BrowserManager
 from utils.credential_manager import CredentialManager
@@ -15,6 +16,15 @@ class CoursePortalGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Course Portal - Missing Grades Checker")
+        
+        # Set favicon - get path relative to this file's location
+        favicon_path = os.path.join(os.path.dirname(__file__), "favicon.ico")
+        if os.path.exists(favicon_path):
+            try:
+                self.root.iconbitmap(favicon_path)
+            except Exception as e:
+                print(f"Warning: Could not load favicon: {e}")
+        
         self.root.geometry("900x700")
         
         # Initialize components
@@ -26,7 +36,6 @@ class CoursePortalGUI:
         self.hovered_item = {}  # dict to track hovered item index for each listbox
         
         style = ttk.Style()
-        print(style.theme_names())
         style.theme_use('vista')
         self.create_login_widgets()
     
